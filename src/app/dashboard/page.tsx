@@ -1,10 +1,15 @@
 import { auth } from '@/lib/auth/auth'
 import { getUserSessions } from '@/lib/db/queries'
+import { getGamificationProfile } from '@/lib/gamification/award'
 import { redirect } from 'next/navigation'
 import { ButtonLink } from '@/components/ui/button-link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ScoreChart } from '@/components/dashboard/ScoreChart'
 import { SessionList } from '@/components/dashboard/SessionList'
+import { PageShell } from '@/components/layout/PageShell'
+import { GamificationHero } from '@/components/gamification/GamificationHero'
+import { BadgeGrid, BadgeGridSummary } from '@/components/gamification/BadgeGrid'
+import { Mic, Target, Plus } from 'lucide-react'
 
 const TYPE_LABELS: Record<string, string> = {
   behavioral: 'Behavioral',
@@ -12,25 +17,14 @@ const TYPE_LABELS: Record<string, string> = {
   system_design: 'System Design',
 }
 
-const PERSONA_LABELS: Record<string, string> = {
-  google: 'Google',
-  amazon: 'Amazon',
-  startup: 'Startup',
-  strict: 'Strict',
-  friendly: 'Friendly',
-}
-
-function ScoreColor({ score }: { score: number | null }) {
-  if (!score) return <span className="text-muted-foreground text-sm">—</span>
-  const color = score >= 8 ? 'text-green-600' : score >= 6 ? 'text-yellow-600' : 'text-red-600'
-  return <span className={`font-bold ${color}`}>{score}/10</span>
-}
-
 export default async function DashboardPage() {
   const authSession = await auth()
   if (!authSession?.user?.id) redirect('/login')
 
-  const allSessions = await getUserSessions(authSession.user.id)
+  const [allSessions, gamification] = await Promise.all([
+    getUserSessions(authSession.user.id),
+    getGamificationProfile(authSession.user.id),
+  ])
   const completed = allSessions.filter((s) => s.status === 'completed')
 
   const avgScore =
@@ -50,52 +44,48 @@ export default async function DashboardPage() {
     }))
 
   return (
-    <div className="min-h-screen bg-background p-4">
-      <div className="max-w-3xl mx-auto py-8 space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
+    <PageShell maxWidth="lg">
+      <div className="space-y-8">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold">Dashboard</h1>
-            <p className="text-muted-foreground mt-1">
-              Welcome back, {authSession.user.name?.split(' ')[0]}
-            </p>
+            <h1 className="text-3xl font-bold tracking-tight">
+              Hey, {authSession.user.name?.split(' ')[0] ?? 'there'} 👋
+            </h1>
+            <p className="text-muted-foreground mt-1">Your speaking journey at a glance</p>
           </div>
           <div className="flex gap-2 flex-wrap">
-            <ButtonLink href="/interview/prep" variant="default" size="lg">🎯 Interview Prep</ButtonLink>
-            <ButtonLink href="/accent" variant="outline" size="lg">🇬🇧 Accent Coach</ButtonLink>
-            <ButtonLink href="/interview/new" size="lg">+ New Interview</ButtonLink>
+            <ButtonLink href="/interview/prep" size="lg" className="gap-2">
+              <Target className="h-4 w-4" /> Interview Prep
+            </ButtonLink>
+            <ButtonLink href="/accent" variant="outline" size="lg" className="gap-2">
+              <Mic className="h-4 w-4" /> Accent Coach
+            </ButtonLink>
+            <ButtonLink href="/interview/new" variant="secondary" size="lg" className="gap-2">
+              <Plus className="h-4 w-4" /> New Interview
+            </ButtonLink>
           </div>
         </div>
 
-        {/* Stats row */}
-        <div className="grid grid-cols-3 gap-4">
-          <Card>
-            <CardContent className="pt-6 text-center">
-              <div className="text-3xl font-bold">{allSessions.length}</div>
-              <div className="text-xs text-muted-foreground mt-1">Total Sessions</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6 text-center">
-              <div className="text-3xl font-bold">{completed.length}</div>
-              <div className="text-xs text-muted-foreground mt-1">Completed</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6 text-center">
-              <div className={`text-3xl font-bold ${avgScore ? (avgScore >= 8 ? 'text-green-600' : avgScore >= 6 ? 'text-yellow-600' : 'text-red-600') : ''}`}>
-                {avgScore ? `${avgScore}/10` : '—'}
-              </div>
-              <div className="text-xs text-muted-foreground mt-1">Avg Score</div>
-            </CardContent>
-          </Card>
+        <GamificationHero profile={gamification} />
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {[
+            { label: 'Total sessions', value: allSessions.length },
+            { label: 'Completed', value: completed.length },
+            { label: 'Avg score', value: avgScore ? `${avgScore}/10` : '—' },
+            { label: 'Badges', value: gamification.earnedBadges.length },
+          ].map((stat) => (
+            <div key={stat.label} className="glass-card p-4 text-center">
+              <div className="text-2xl font-bold tabular-nums">{stat.value}</div>
+              <div className="text-xs text-muted-foreground mt-1">{stat.label}</div>
+            </div>
+          ))}
         </div>
 
-        {/* Score trend chart */}
         {chartData.length > 1 && (
-          <Card>
+          <Card className="glass-card border-0 shadow-sm">
             <CardHeader>
-              <CardTitle className="text-base">Score Over Time</CardTitle>
+              <CardTitle className="text-base">Score over time</CardTitle>
             </CardHeader>
             <CardContent>
               <ScoreChart data={chartData} />
@@ -103,16 +93,23 @@ export default async function DashboardPage() {
           </Card>
         )}
 
-        {/* Session history */}
-        <Card>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Achievements</h2>
+            <BadgeGridSummary earnedIds={gamification.earnedBadges} />
+          </div>
+          <BadgeGrid earnedIds={gamification.earnedBadges} compact />
+        </div>
+
+        <Card className="glass-card border-0">
           <CardHeader>
-            <CardTitle className="text-base">Interview History</CardTitle>
+            <CardTitle className="text-base">Interview history</CardTitle>
           </CardHeader>
           <CardContent>
             <SessionList sessions={allSessions} />
           </CardContent>
         </Card>
       </div>
-    </div>
+    </PageShell>
   )
 }

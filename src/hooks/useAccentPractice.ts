@@ -15,6 +15,8 @@ import type { PhoneticsAnalysis } from '@/lib/accent/phonetics'
 import type { ProsodyAnalysis } from '@/lib/accent/prosody'
 import type { PhonemeWordAnalysis } from '@/lib/accent/phonetics'
 import type { Accent } from '@/lib/accent/phrases'
+import { showGamificationCelebrations } from '@/lib/gamification/celebrate'
+import type { GamificationAward } from '@/lib/gamification/award'
 
 export type RecordingState = 'idle' | 'recording' | 'processing' | 'done' | 'error'
 
@@ -27,6 +29,7 @@ export interface ScoreResult {
   phonetics?: PhoneticsAnalysis
   coaching: AccentCoachingFeedback
   durationSeconds: number
+  gamification?: GamificationAward
 }
 
 export function useAccentPractice(accent: Accent) {
@@ -160,6 +163,15 @@ export function useAccentPractice(accent: Accent) {
         const scoreResult = data as ScoreResult
         setResult(scoreResult)
         setRecordingState('done')
+        if (scoreResult.gamification) {
+          showGamificationCelebrations({
+            xpEarned: scoreResult.gamification.xpEarned,
+            leveledUp: scoreResult.gamification.leveledUp,
+            newLevel: scoreResult.gamification.newLevel,
+            newBadges: scoreResult.gamification.newBadges,
+            dailyGoalMet: scoreResult.gamification.dailyGoalMet,
+          })
+        }
         onDoneCallbackRef.current?.(scoreResult)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Scoring failed. Please try again.')

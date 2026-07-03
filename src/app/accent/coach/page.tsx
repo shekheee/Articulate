@@ -11,6 +11,7 @@ import { WaveformVisualizer } from '@/components/interview/WaveformVisualizer'
 import { useGeminiLive } from '@/hooks/useGeminiLive'
 import { buildCoachSystemPrompt } from '@/lib/accent/coach-prompts'
 import { CoachSummaryPanel, type CoachSummary } from '@/components/accent/CoachSummaryPanel'
+import { showGamificationCelebrations } from '@/lib/gamification/celebrate'
 import type { Accent } from '@/lib/accent/phrases'
 
 interface TranscriptMessage { id: string; role: 'ai' | 'user'; content: string }
@@ -63,6 +64,15 @@ function CoachPageContent() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Summary failed')
+      if (data.gamification) {
+        showGamificationCelebrations({
+          xpEarned: data.gamification.xpEarned,
+          leveledUp: data.gamification.leveledUp,
+          newLevel: data.gamification.newLevel,
+          newBadges: data.gamification.newBadges,
+          dailyGoalMet: data.gamification.dailyGoalMet,
+        })
+      }
       setSummary(data)
       setStarted(false)
     } catch (err) {

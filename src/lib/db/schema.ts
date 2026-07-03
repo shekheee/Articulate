@@ -40,6 +40,15 @@ export const users = pgTable('users', {
   image: text('image'),
   password: text('password'),
   resumeContext: text('resume_context'),
+  xp: integer('xp').notNull().default(0),
+  level: integer('level').notNull().default(1),
+  currentStreak: integer('current_streak').notNull().default(0),
+  longestStreak: integer('longest_streak').notNull().default(0),
+  lastPracticeDate: text('last_practice_date'),
+  dailySessions: integer('daily_sessions').notNull().default(0),
+  dailySessionsDate: text('daily_sessions_date'),
+  dailyGoal: integer('daily_goal').notNull().default(2),
+  earnedBadges: json('earned_badges').$type<string[]>().notNull().default([]),
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
 })
 

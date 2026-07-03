@@ -1,18 +1,25 @@
 import { auth } from '@/lib/auth/auth'
 import { redirect } from 'next/navigation'
 import { getUserAccentAttempts } from '@/lib/db/queries'
+import { getGamificationProfile } from '@/lib/gamification/award'
 import { PHRASES, computeAccentLevel, type Accent } from '@/lib/accent/phrases'
 import { ButtonLink } from '@/components/ui/button-link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
-import { Tabs } from '@/components/ui/tabs'
+import { PageShell } from '@/components/layout/PageShell'
+import { GamificationHero } from '@/components/gamification/GamificationHero'
+import { BadgeGrid, BadgeGridSummary } from '@/components/gamification/BadgeGrid'
+import { XPBar } from '@/components/gamification/XPBar'
+import { StreakBadge } from '@/components/gamification/StreakBadge'
 
 export default async function ProgressPage() {
   const session = await auth()
   if (!session?.user?.id) redirect('/login')
 
-  const attempts = await getUserAccentAttempts(session.user.id)
+  const [attempts, gamification] = await Promise.all([
+    getUserAccentAttempts(session.user.id),
+    getGamificationProfile(session.user.id),
+  ])
 
   const buildAccentStats = (accent: Accent) => {
     const filtered = attempts.filter((a) => a.accent === accent)
@@ -61,10 +68,10 @@ export default async function ProgressPage() {
   const irishStats = buildAccentStats('irish')
 
   const levelLabels: Record<number, string> = { 1: 'Beginner', 2: 'Intermediate', 3: 'Advanced' }
-  const levelColors: Record<number, string> = { 1: '', 2: 'text-yellow-600', 3: 'text-green-600' }
+  const levelColors: Record<number, string> = { 1: '', 2: 'text-amber-600', 3: 'text-emerald-600' }
 
   function PhraseRow({ phrase, bestScore, attempts: att, trend }: { phrase: typeof britishStats.phraseData[0]; bestScore: number | null; attempts: number; trend: number[] }) {
-    const color = bestScore === null ? 'text-muted-foreground' : bestScore >= 75 ? 'text-green-600' : bestScore >= 50 ? 'text-yellow-600' : 'text-red-500'
+    const color = bestScore === null ? 'text-muted-foreground' : bestScore >= 75 ? 'text-emerald-600' : bestScore >= 50 ? 'text-amber-600' : 'text-red-500'
     return (
       <div className="flex items-center gap-3 py-2 border-b last:border-0">
         <div className="flex-1 min-w-0">
@@ -75,7 +82,7 @@ export default async function ProgressPage() {
           {trend.length > 1 && (
             <div className="flex gap-0.5 items-end h-4">
               {trend.map((s, i) => (
-                <div key={i} className="w-1 rounded-sm bg-primary/40" style={{ height: `${Math.max(2, (s / 100) * 16)}px` }} />
+                <div key={i} className="w-1 rounded-sm bg-primary/40 transition-all" style={{ height: `${Math.max(2, (s / 100) * 16)}px` }} />
               ))}
             </div>
           )}
@@ -90,18 +97,14 @@ export default async function ProgressPage() {
 
   function AccentSection({ label, stats }: { label: string; stats: typeof britishStats }) {
     return (
-      <Card>
+      <Card className="glass-card border-0">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <CardTitle className="text-base">{label}</CardTitle>
             <div className="flex items-center gap-2 flex-wrap">
               <Badge variant="secondary">{stats.totalAttempts} attempts</Badge>
-              {stats.avgFluency != null && (
-                <Badge variant="outline">Avg fluency {stats.avgFluency}%</Badge>
-              )}
-              {stats.avgProsody != null && (
-                <Badge variant="outline">Avg prosody {stats.avgProsody}%</Badge>
-              )}
+              {stats.avgFluency != null && <Badge variant="outline">Fluency {stats.avgFluency}%</Badge>}
+              {stats.avgProsody != null && <Badge variant="outline">Prosody {stats.avgProsody}%</Badge>}
               <Badge variant={stats.level === 3 ? 'default' : 'outline'} className={levelColors[stats.level]}>
                 {levelLabels[stats.level]}
               </Badge>
@@ -138,23 +141,44 @@ export default async function ProgressPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-4">
-      <div className="max-w-2xl mx-auto py-8 space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Pronunciation Progress</h1>
-            <p className="text-muted-foreground text-sm mt-1">Your best score per phrase across all attempts.</p>
+    <PageShell maxWidth="md">
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Your Progress</h1>
+          <p className="text-muted-foreground text-sm mt-1">Pronunciation stats, XP, streaks & achievements.</p>
+        </div>
+
+        <GamificationHero profile={gamification} />
+
+        <div className="grid sm:grid-cols-2 gap-4">
+          <Card className="glass-card p-4 border-0">
+            <XPBar
+              level={gamification.level}
+              xpInLevel={gamification.xpInLevel}
+              xpToNextLevel={gamification.xpToNextLevel}
+              pct={gamification.xpLevelPct}
+            />
+          </Card>
+          <Card className="glass-card p-4 border-0 flex flex-col justify-center gap-2">
+            <p className="text-sm font-medium">Practice streak</p>
+            <StreakBadge current={gamification.currentStreak} longest={gamification.longestStreak} showLongest />
+          </Card>
+        </div>
+
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Badges</h2>
+            <BadgeGridSummary earnedIds={gamification.earnedBadges} />
           </div>
-          <ButtonLink href="/accent" variant="outline" size="sm">← Back</ButtonLink>
+          <BadgeGrid earnedIds={gamification.earnedBadges} />
         </div>
 
         {attempts.length === 0 ? (
-          <Card>
-            <CardContent className="py-10 text-center text-muted-foreground">
-              No attempts yet. Start with Shadowing or Drills to see your progress here.
-              <div className="mt-4">
-                <ButtonLink href="/accent">Go to Accent Coach</ButtonLink>
-              </div>
+          <Card className="glass-card border-dashed">
+            <CardContent className="py-12 text-center">
+              <p className="text-4xl mb-3">🎙️</p>
+              <p className="text-muted-foreground mb-4">No attempts yet — your first session earns XP and a badge!</p>
+              <ButtonLink href="/accent">Start accent practice</ButtonLink>
             </CardContent>
           </Card>
         ) : (
@@ -164,6 +188,6 @@ export default async function ProgressPage() {
           </>
         )}
       </div>
-    </div>
+    </PageShell>
   )
 }

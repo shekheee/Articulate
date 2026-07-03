@@ -5,6 +5,7 @@ import { analyzePhonetics } from '@/lib/accent/phonetics'
 import { scoreTranscription } from '@/lib/accent/scoring'
 import { generateAccentCoaching } from '@/lib/accent/feedback'
 import { saveAccentAttempt } from '@/lib/db/queries'
+import { awardGamification } from '@/lib/gamification/award'
 import { randomUUID } from 'crypto'
 
 export async function POST(req: Request) {
@@ -85,12 +86,18 @@ export async function POST(req: Request) {
       },
     })
 
+    const gamification = await awardGamification(session.user.id, {
+      type: 'accent_coach',
+      accuracy: phonetics.overallPhonemeScore,
+    })
+
     return NextResponse.json({
       fluency,
       phonetics,
       coaching,
       userWordCount: userText.split(/\s+/).filter(Boolean).length,
       durationSeconds: duration,
+      gamification,
     })
   } catch (err) {
     console.error('[accent/coach-summary]', err)

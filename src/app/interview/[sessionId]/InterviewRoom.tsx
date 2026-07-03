@@ -10,6 +10,7 @@ import { WaveformVisualizer } from '@/components/interview/WaveformVisualizer'
 import { useGeminiLive } from '@/hooks/useGeminiLive'
 import { useTextInterview } from '@/hooks/useTextInterview'
 import { buildSystemPrompt } from '@/lib/ai/prompts'
+import { showGamificationCelebrations } from '@/lib/gamification/celebrate'
 import type { InterviewSession } from '@/lib/db/schema'
 import type { InterviewType, Persona, Difficulty } from '@/lib/ai/prompts'
 
@@ -74,11 +75,21 @@ export function InterviewRoom({ session, userName, personaLabel, typeLabel }: In
     setFinishing(true)
     try {
       const speakingData = mode === 'voice' ? getSpeakingDataRef.current?.() : undefined
-      await fetch('/api/evaluate', {
+      const res = await fetch('/api/evaluate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId: session.id, speakingData }),
       })
+      const data = await res.json().catch(() => ({}))
+      if (data.gamification) {
+        showGamificationCelebrations({
+          xpEarned: data.gamification.xpEarned,
+          leveledUp: data.gamification.leveledUp,
+          newLevel: data.gamification.newLevel,
+          newBadges: data.gamification.newBadges,
+          dailyGoalMet: data.gamification.dailyGoalMet,
+        })
+      }
       router.push(`/feedback/${session.id}`)
     } catch {
       setFinishing(false)

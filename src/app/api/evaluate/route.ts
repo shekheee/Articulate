@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth/auth'
 import { runEvaluation, analyzeSpeaking } from '@/lib/ai/evaluate'
 import { getMessages, getSession, saveEvaluation, completeSession } from '@/lib/db/queries'
+import { awardGamification } from '@/lib/gamification/award'
 import { NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
 import type { InterviewType, Persona } from '@/lib/ai/prompts'
@@ -67,5 +68,12 @@ export async function POST(req: Request) {
 
   await completeSession(sessionId, Math.round(evaluation.overallScore))
 
-  return NextResponse.json(saved)
+  const isPrepSession = interviewSession.round?.startsWith('prep:') ?? false
+  const gamification = await awardGamification(session.user.id, {
+    type: 'interview',
+    interviewScore: Math.round(evaluation.overallScore),
+    isPrepSession,
+  })
+
+  return NextResponse.json({ ...saved, gamification })
 }
