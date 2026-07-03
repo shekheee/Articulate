@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -45,7 +45,7 @@ Rules:
 
 interface TranscriptMessage { id: string; role: 'ai' | 'user'; content: string }
 
-export default function CoachPage() {
+function CoachPageContent() {
   const params = useSearchParams()
   const accent = (params.get('accent') ?? 'british') as Accent
   const [started, setStarted] = useState(false)
@@ -125,5 +125,13 @@ export default function CoachPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function CoachPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <CoachPageContent />
+    </Suspense>
   )
 }

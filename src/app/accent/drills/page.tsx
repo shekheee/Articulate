@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -11,7 +11,7 @@ import { AudioPlaybackQueue } from '@/lib/voice/playback'
 import { getPhrases, type AccentPhrase, type Accent } from '@/lib/accent/phrases'
 import { useAccentPractice } from '@/hooks/useAccentPractice'
 
-export default function DrillsPage() {
+function DrillsPageContent() {
   const params = useSearchParams()
   const accent = (params.get('accent') ?? 'british') as Accent
   // Drills use all phrases but show just the key word/feature label (flash-card style)
@@ -178,5 +178,13 @@ export default function DrillsPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function DrillsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <DrillsPageContent />
+    </Suspense>
   )
 }

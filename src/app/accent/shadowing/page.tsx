@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -31,7 +31,7 @@ function WordHighlight({ wordScores }: { wordScores: ScoreResult['wordScores'] }
   )
 }
 
-export default function ShadowingPage() {
+function ShadowingPageContent() {
   const params = useSearchParams()
   const accent = (params.get('accent') ?? 'british') as Accent
   const phrases = getPhrases(accent)
@@ -218,5 +218,13 @@ export default function ShadowingPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function ShadowingPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <ShadowingPageContent />
+    </Suspense>
   )
 }
