@@ -47,7 +47,7 @@ function getEvalModel(provider: Provider): LanguageModel {
   }
 }
 
-const PROVIDER_ORDER: Provider[] = ['gemini', 'groq', 'openai', 'anthropic']
+const PROVIDER_ORDER: Provider[] = ['anthropic', 'openai', 'gemini', 'groq']
 
 export async function streamInterviewResponse(
   system: string,

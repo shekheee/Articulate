@@ -75,7 +75,10 @@ export default function LoginPage() {
             </Button>
           </form>
           <p className="text-center text-xs text-muted-foreground">
-            Progress tracking requires an account
+            New here?{' '}
+            <a href="/signup" className="text-primary underline-offset-4 hover:underline">
+              Try now — create a free account
+            </a>
           </p>
         </CardContent>
       </Card>

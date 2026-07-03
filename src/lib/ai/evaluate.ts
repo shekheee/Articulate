@@ -88,8 +88,10 @@ export const evaluationSchema = z.object({
       question: z.string(),
       answer: z.string(),
       score: z.number().min(1).max(10),
+      contentScore: z.number().min(1).max(10).optional(),
       feedback: z.string(),
       improvements: z.array(z.string()),
+      modelAnswer: z.string().optional(),
     })
   ),
 })
@@ -100,12 +102,13 @@ export async function runEvaluation(
   type: InterviewType,
   persona: Persona,
   transcript: Array<{ role: 'ai' | 'user'; content: string }>,
-  speakingMetrics?: SpeakingMetrics
+  speakingMetrics?: SpeakingMetrics,
+  round?: string
 ): Promise<EvaluationResult & { speakingMetrics?: SpeakingMetrics }> {
   const system = `You are an expert interview coach providing structured, honest feedback. 
 Return ONLY valid JSON matching the schema exactly. Be precise with scores — avoid clustering everything at 7.`
 
-  const prompt = buildEvaluationPrompt(type, persona, transcript, speakingMetrics)
+  const prompt = buildEvaluationPrompt(type, persona, transcript, speakingMetrics, round)
 
   const result = await generateEvaluation(system, prompt, evaluationSchema)
   return { ...(result.object as EvaluationResult), speakingMetrics }

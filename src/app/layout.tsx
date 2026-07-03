@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Interview Evaluator — AI Mock Interviews",
-  description: "Practice interviews with real-time AI feedback on clarity, structure, confidence, and depth.",
+  title: "Articulate — AI Speaking & Interview Coach",
+  description: "Practice DS/ML interviews and accent coaching with real-time AI feedback on clarity, structure, and technical content.",
 };
 
 export default function RootLayout({

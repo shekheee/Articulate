@@ -44,7 +44,8 @@ export async function POST(req: Request) {
     interviewSession.type as InterviewType,
     interviewSession.persona as Persona,
     transcript,
-    speakingMetrics
+    speakingMetrics,
+    interviewSession.round ?? undefined
   )
 
   const saved = await saveEvaluation({

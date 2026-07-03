@@ -60,7 +60,8 @@ export default async function DashboardPage() {
               Welcome back, {authSession.user.name?.split(' ')[0]}
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            <ButtonLink href="/interview/prep" variant="default" size="lg">🎯 Interview Prep</ButtonLink>
             <ButtonLink href="/accent" variant="outline" size="lg">🇬🇧 Accent Coach</ButtonLink>
             <ButtonLink href="/interview/new" size="lg">+ New Interview</ButtonLink>
           </div>

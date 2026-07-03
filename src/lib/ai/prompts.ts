@@ -1,4 +1,6 @@
 
+import type { PrepTrack } from '@/lib/interview/questionBank'
+
 export type InterviewType = 'behavioral' | 'dsa' | 'system_design' | 'case_study'
 export type Persona = 'google' | 'amazon' | 'startup' | 'strict' | 'friendly'
 export type Difficulty = 'junior' | 'mid' | 'senior'
@@ -93,6 +95,27 @@ This is a final round interview. Questions will be a mix of deep behavioral, com
 This is a partner-level interview (typically consulting). Expect big-picture strategic questions, a case study, and strong evaluation of leadership presence, executive communication, and commercial awareness. The partner may challenge assumptions directly.`,
 }
 
+const PREP_TRACK_INSTRUCTIONS: Record<PrepTrack, string> = {
+  ml_technical: `## DS/ML Interview Prep — Technical Concepts
+You are interviewing a Data Scientist / ML Engineer candidate. Focus on core ML theory applied to real projects (forecasting, classification, NLP). Expect clear definitions, intuition, and trade-offs — not textbook recitation. Probe with "how did you use this on a project?" Follow-ups should test depth: regularization choices, metric selection, debugging model performance.`,
+  rag_llm: `## DS/ML Interview Prep — RAG & LLM Systems
+You are interviewing an AI Engineer candidate with RAG/LLM experience. Expect end-to-end system thinking: ingestion, chunking, retrieval, reranking, generation, evaluation, and guardrails. Reference production concerns: latency, cost, hallucination, and observability. This candidate has built RAG systems — ask for specifics from their experience at scale.`,
+  ml_system_design: `## DS/ML Interview Prep — ML System Design
+You are interviewing for a senior ML role. Expect architecture for training pipelines, feature stores, model serving, monitoring, drift detection, and retraining. Use realistic scenarios (forecasting at global scale, recommendation systems, batch vs real-time). Push on failure modes, SLAs, and cross-team collaboration.`,
+  stats_probability: `## DS/ML Interview Prep — Statistics & Probability
+You are testing statistical rigor for a data science role. Expect hypothesis testing, experiment design, confounding, and communicating uncertainty to stakeholders. Penalize hand-wavy statistics. Ask for real examples where statistical mistakes would have been costly.`,
+  sql_coding: `## DS/ML Interview Prep — SQL & Coding Talk-through
+The candidate should explain their logic out loud as if in a live coding interview. They do NOT need to write code — but should describe queries, data cleaning steps, and complexity clearly. Ask about edge cases, performance, and how they'd validate results.`,
+  behavioral_ds: `## DS/ML Interview Prep — Behavioral (STAR)
+You are conducting a behavioral interview for a Data Scientist / AI Engineer. All questions must elicit STAR-format answers with measurable impact. Focus on: translating business problems to ML solutions, stakeholder communication, model failures, ethical/statistical pushback, and cross-functional work. Dig into metrics and outcomes.`,
+}
+
+function getPrepTrackFromRound(round?: string): PrepTrack | null {
+  if (!round?.startsWith('prep:')) return null
+  const track = round.slice(5) as PrepTrack
+  return track in PREP_TRACK_INSTRUCTIONS ? track : null
+}
+
 const TYPE_INSTRUCTIONS: Record<InterviewType, string> = {
   behavioral:
     'Focus on behavioral and situational questions. Expect STAR-formatted answers. Topics: teamwork, conflict resolution, leadership, failure, initiative, and impact. Ask follow-up questions to dig deeper when answers are too high-level.',
@@ -124,6 +147,8 @@ export function buildSystemPrompt(
     ? (COMPANY_CONTEXT[company as Company] ?? '')
     : ''
   const roundCtx = round ? (ROUND_INSTRUCTIONS[round as InterviewRound] ?? '') : ''
+  const prepTrack = getPrepTrackFromRound(round)
+  const prepCtx = prepTrack ? `\n${PREP_TRACK_INSTRUCTIONS[prepTrack]}\n` : ''
 
   const resumeSection = resumeContext
     ? `\n## Candidate Resume\nThe following information was extracted from the candidate's resume. Use it to personalise your questions — reference their specific experiences, skills, and projects.\n\n${resumeContext}\n`
@@ -145,7 +170,7 @@ export function buildSystemPrompt(
 
   return `You are ${PERSONA_DESCRIPTIONS[persona]}
 ${companyCtx ? `\n${companyCtx}\n` : ''}
-${roundCtx ? `\n${roundCtx}\n` : ''}
+${prepCtx}${roundCtx && !prepTrack ? `\n${roundCtx}\n` : ''}
 ${TYPE_INSTRUCTIONS[type]}
 ${technicalGrilling}
 ${DIFFICULTY_CALIBRATION[difficulty]}
@@ -177,7 +202,8 @@ export function buildEvaluationPrompt(
     estimatedPauses: number
     wordsPerMinute: number
     observations: string[]
-  }
+  },
+  round?: string
 ): string {
   const formatted = transcript
     .map((m) => `${m.role === 'ai' ? 'Interviewer' : 'Candidate'}: ${m.content}`)
@@ -194,11 +220,26 @@ export function buildEvaluationPrompt(
 Use this data to score **Fluency** (1–10): how naturally and confidently did they speak? Penalise heavy filler usage, very slow/fast pace, and fragmented delivery. Reward clear, measured speech.
 ` : ''
 
+  const prepTrack = getPrepTrackFromRound(round)
+  const prepEvalSection = prepTrack ? `
+## Interview Prep Mode — Content Evaluation
+This is a Data Science / ML / AI interview prep session (${prepTrack.replace(/_/g, ' ')}).
+For each question, evaluate BOTH:
+1. **Delivery** (clarity, structure, confidence, fluency) — already captured in dimension scores.
+2. **Content** (technical correctness, completeness, depth for THIS specific question) — score as \`contentScore\` per question.
+
+For each perQuestion entry you MUST include:
+- \`contentScore\` (1–10): how correct and complete was the technical/substantive content?
+- \`modelAnswer\`: a concise 4–8 sentence model answer a strong senior DS/AI candidate would give for that question. Reference RAG, forecasting, LLMs, or production ML where relevant when appropriate.
+
+Be rigorous on content for ML/AI questions — vague or incorrect claims should score below 6.
+` : ''
+
   return `You evaluated a ${type.replace('_', ' ')} interview conducted by a ${persona} interviewer.
 
 ## Full Transcript
 ${formatted}
-${speakingSection}
+${speakingSection}${prepEvalSection}
 ## Your Task
 Analyze the candidate's performance thoroughly and return a structured JSON evaluation.
 

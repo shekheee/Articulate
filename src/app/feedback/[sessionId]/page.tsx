@@ -231,14 +231,21 @@ export default async function FeedbackPage({
                 question: string
                 answer: string
                 score: number
+                contentScore?: number
                 feedback: string
                 improvements: string[]
+                modelAnswer?: string
               }>).map((q, i) => (
                 <div key={i} className="space-y-2">
                   {i > 0 && <Separator />}
                   <div className="flex items-start justify-between gap-2">
                     <div className="font-medium text-sm">Q{i + 1}: {q.question}</div>
-                    <Badge variant={q.score >= 7 ? 'default' : 'secondary'}>{q.score}/10</Badge>
+                    <div className="flex gap-1 shrink-0">
+                      {q.contentScore != null && (
+                        <Badge variant="outline" className="text-xs">Content {q.contentScore}/10</Badge>
+                      )}
+                      <Badge variant={q.score >= 7 ? 'default' : 'secondary'}>{q.score}/10</Badge>
+                    </div>
                   </div>
                   {q.answer && (
                     <div className="bg-muted/50 rounded-md px-3 py-2">
@@ -247,6 +254,12 @@ export default async function FeedbackPage({
                     </div>
                   )}
                   <p className="text-sm text-muted-foreground">{q.feedback}</p>
+                  {q.modelAnswer && (
+                    <div className="bg-primary/5 border border-primary/20 rounded-md px-3 py-2">
+                      <p className="text-xs font-medium text-primary mb-1 uppercase tracking-wide">Model answer</p>
+                      <p className="text-sm text-foreground/90">{q.modelAnswer}</p>
+                    </div>
+                  )}
                   {q.improvements.length > 0 && (
                     <ul className="space-y-1">
                       {q.improvements.map((imp, j) => (
@@ -264,7 +277,8 @@ export default async function FeedbackPage({
 
         {/* Actions */}
         <div className="flex gap-3">
-          <ButtonLink href="/interview/new" className="flex-1">Practice Again</ButtonLink>
+          <ButtonLink href="/interview/prep" className="flex-1">Interview Prep</ButtonLink>
+          <ButtonLink href="/interview/new" variant="outline" className="flex-1">Custom Interview</ButtonLink>
           <ButtonLink href="/dashboard" variant="outline" className="flex-1">Dashboard</ButtonLink>
         </div>
       </div>
