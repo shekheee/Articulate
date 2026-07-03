@@ -1,7 +1,7 @@
 import { db } from './index'
-import { interviewSessions, sessionMessages, sessionEvaluations, users, accentAttempts } from './schema'
+import { interviewSessions, sessionMessages, sessionEvaluations, users, accentAttempts, accentFeatureMastery } from './schema'
 import { eq, desc, and, avg, max } from 'drizzle-orm'
-import type { InterviewSession, SessionMessage, SessionEvaluation, AccentAttempt } from './schema'
+import type { InterviewSession, SessionMessage, SessionEvaluation, AccentAttempt, AccentFeatureMastery } from './schema'
 import type { SpeakingMetrics } from '@/lib/ai/evaluate'
 
 export async function createSession(data: {
@@ -145,6 +145,9 @@ export async function saveAccentAttempt(data: {
     wordsPerMinute?: number
     totalFillers?: number
     pauseCount?: number
+    featureId?: string
+    featureScore?: number
+    passedFeature?: boolean
   } | null
 }): Promise<AccentAttempt> {
   const [attempt] = await db.insert(accentAttempts).values(data).returning()
@@ -199,4 +202,60 @@ export async function getAccentAttemptsByPhrase(
     .where(and(eq(accentAttempts.userId, userId), eq(accentAttempts.phraseId, phraseId)))
     .orderBy(desc(accentAttempts.createdAt))
     .limit(10)
+}
+
+// ─── RP feature mastery ───────────────────────────────────────────────────
+
+export async function getUserFeatureMastery(
+  userId: string,
+  accentTarget = 'rp'
+): Promise<AccentFeatureMastery[]> {
+  return db
+    .select()
+    .from(accentFeatureMastery)
+    .where(and(eq(accentFeatureMastery.userId, userId), eq(accentFeatureMastery.accentTarget, accentTarget)))
+}
+
+export async function upsertFeatureMastery(data: {
+  id: string
+  userId: string
+  accentTarget: string
+  featureId: string
+  masteryScore: number
+  bestScore: number
+  status: string
+  attemptCount: number
+  lastPracticedAt: Date
+  nextReviewAt: Date | null
+}): Promise<AccentFeatureMastery> {
+  const existing = await db
+    .select()
+    .from(accentFeatureMastery)
+    .where(
+      and(
+        eq(accentFeatureMastery.userId, data.userId),
+        eq(accentFeatureMastery.accentTarget, data.accentTarget),
+        eq(accentFeatureMastery.featureId, data.featureId)
+      )
+    )
+    .limit(1)
+
+  if (existing[0]) {
+    const [row] = await db
+      .update(accentFeatureMastery)
+      .set({
+        masteryScore: data.masteryScore,
+        bestScore: data.bestScore,
+        status: data.status,
+        attemptCount: data.attemptCount,
+        lastPracticedAt: data.lastPracticedAt,
+        nextReviewAt: data.nextReviewAt,
+      })
+      .where(eq(accentFeatureMastery.id, existing[0].id))
+      .returning()
+    return row
+  }
+
+  const [row] = await db.insert(accentFeatureMastery).values(data).returning()
+  return row
 }

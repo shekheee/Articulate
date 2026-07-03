@@ -18,6 +18,12 @@ export const BADGES: BadgeDefinition[] = [
   { id: 'level_10', name: 'Elite Speaker', description: 'Reach level 10', icon: '👑' },
   { id: 'pronunciation_80', name: 'Crystal Clear', description: 'Score 80%+ on an accent attempt', icon: '✨' },
   { id: 'daily_goal', name: 'Daily Champion', description: 'Hit your daily practice goal', icon: '☀️' },
+  { id: 'rp_apprentice', name: 'RP Apprentice', description: 'Complete your first RP feature practice', icon: '🇬🇧' },
+  { id: 'rp_non_rhotic', name: 'Silent R Master', description: 'Master non-rhotic R in RP', icon: '🔇' },
+  { id: 'rp_trap_bath', name: 'BATH Split', description: 'Master the TRAP–BATH split', icon: '🛁' },
+  { id: 'rp_lot', name: 'LOT Locked In', description: 'Master the RP LOT vowel', icon: '🍊' },
+  { id: 'rp_prosody', name: 'BBC Tone', description: 'Master RP intonation & stress', icon: '📻' },
+  { id: 'rp_graduate', name: 'RP Graduate', description: 'Master all 11 RP features', icon: '🎓' },
 ]
 
 export function getBadge(id: string): BadgeDefinition | undefined {

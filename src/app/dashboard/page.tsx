@@ -58,7 +58,7 @@ export default async function DashboardPage() {
               <Target className="h-4 w-4" /> Interview Prep
             </ButtonLink>
             <ButtonLink href="/accent" variant="outline" size="lg" className="gap-2">
-              <Mic className="h-4 w-4" /> Accent Coach
+              <Mic className="h-4 w-4" /> RP Trainer
             </ButtonLink>
             <ButtonLink href="/interview/new" variant="secondary" size="lg" className="gap-2">
               <Plus className="h-4 w-4" /> New Interview

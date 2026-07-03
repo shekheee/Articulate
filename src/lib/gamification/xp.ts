@@ -7,6 +7,7 @@ export const XP_REWARDS = {
   accent_shadowing: (accuracy: number) => 20 + Math.round(accuracy / 5),
   accent_drill: (accuracy: number) => 15 + Math.round(accuracy / 5),
   accent_coach: () => 45,
+  rp_feature: (accuracy: number) => 25 + Math.round(accuracy / 4),
   interview: (score: number) => 50 + score * 10,
 } as const
 

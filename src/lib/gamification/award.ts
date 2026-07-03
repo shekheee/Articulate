@@ -1,5 +1,5 @@
 import { db } from '@/lib/db'
-import { users, accentAttempts, interviewSessions } from '@/lib/db/schema'
+import { users, accentAttempts, interviewSessions, accentFeatureMastery } from '@/lib/db/schema'
 import { eq, count, and } from 'drizzle-orm'
 import {
   levelFromXp,
@@ -79,10 +79,12 @@ export async function getGamificationProfile(userId: string): Promise<Gamificati
 export async function awardGamification(
   userId: string,
   event: {
-    type: 'accent_shadowing' | 'accent_drill' | 'accent_coach' | 'interview'
+    type: 'accent_shadowing' | 'accent_drill' | 'accent_coach' | 'interview' | 'rp_feature'
     accuracy?: number
     interviewScore?: number
     isPrepSession?: boolean
+    featureId?: string
+    featureMastered?: boolean
   }
 ): Promise<GamificationAward> {
   const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1)
@@ -101,6 +103,10 @@ export async function awardGamification(
       break
     case 'interview':
       xpEarned = XP_REWARDS.interview(event.interviewScore ?? 5)
+      break
+    case 'rp_feature':
+      xpEarned = XP_REWARDS.rp_feature(event.accuracy ?? 50)
+      if (event.featureMastered) xpEarned += 30
       break
   }
 
@@ -153,6 +159,25 @@ export async function awardGamification(
   if (newLevel >= 10) grant('level_10')
   if ((event.accuracy ?? 0) >= 80) grant('pronunciation_80')
   if (dailyGoalMet) grant('daily_goal')
+
+  if (event.type === 'rp_feature') {
+    grant('rp_apprentice')
+    if (event.featureMastered && event.featureId) {
+      const badgeMap: Record<string, string> = {
+        non_rhotic_r: 'rp_non_rhotic',
+        trap_bath: 'rp_trap_bath',
+        lot_vowel: 'rp_lot',
+        rp_prosody: 'rp_prosody',
+      }
+      const badge = badgeMap[event.featureId]
+      if (badge) grant(badge)
+    }
+    const masteredRows = await db
+      .select({ c: count() })
+      .from(accentFeatureMastery)
+      .where(and(eq(accentFeatureMastery.userId, userId), eq(accentFeatureMastery.status, 'mastered')))
+    if (Number(masteredRows[0]?.c ?? 0) >= 11) grant('rp_graduate')
+  }
 
   await db
     .update(users)

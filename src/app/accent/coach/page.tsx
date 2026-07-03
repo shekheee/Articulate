@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useCallback, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
@@ -12,13 +11,10 @@ import { useGeminiLive } from '@/hooks/useGeminiLive'
 import { buildCoachSystemPrompt } from '@/lib/accent/coach-prompts'
 import { CoachSummaryPanel, type CoachSummary } from '@/components/accent/CoachSummaryPanel'
 import { showGamificationCelebrations } from '@/lib/gamification/celebrate'
-import type { Accent } from '@/lib/accent/phrases'
 
 interface TranscriptMessage { id: string; role: 'ai' | 'user'; content: string }
 
 function CoachPageContent() {
-  const params = useSearchParams()
-  const accent = (params.get('accent') ?? 'british') as Accent
   const [started, setStarted] = useState(false)
   const [transcript, setTranscript] = useState<TranscriptMessage[]>([])
   const [summary, setSummary] = useState<CoachSummary | null>(null)
@@ -30,15 +26,13 @@ function CoachPageContent() {
   }, [])
 
   const { status, isMicActive, isAISpeaking, connect, disconnect, interrupt, getSpeakingData, takePendingUserTranscript } = useGeminiLive({
-    systemPrompt: buildCoachSystemPrompt(accent),
+    systemPrompt: buildCoachSystemPrompt('british'),
     interviewType: 'behavioral',
     persona: 'friendly',
     difficulty: 'mid',
     onAITranscript: (text) => addToTranscript('ai', text),
     onUserTranscript: (text) => addToTranscript('user', text),
   })
-
-  const accentLabel = accent === 'british' ? '🇬🇧 British RP' : '🇮🇪 Irish English'
 
   const handleEndSession = useCallback(async () => {
     setSummaryLoading(true)
@@ -57,7 +51,7 @@ function CoachPageContent() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          accent,
+          accent: 'british',
           transcript: finalTranscript.map((m) => ({ role: m.role, content: m.content })),
           speakingData,
         }),
@@ -81,12 +75,13 @@ function CoachPageContent() {
     } finally {
       setSummaryLoading(false)
     }
-  }, [accent, disconnect, getSpeakingData, takePendingUserTranscript, transcript])
+  }, [disconnect, getSpeakingData, takePendingUserTranscript, transcript])
 
   if (summary) {
     return (
-      <div className="min-h-screen bg-background p-4">
-        <div className="max-w-2xl mx-auto">
+      <div className="min-h-screen app-mesh-bg p-4">
+        <div className="max-w-2xl mx-auto py-6 space-y-4">
+          <ButtonLink href="/accent" variant="ghost" size="sm">← Training path</ButtonLink>
           <CoachSummaryPanel summary={summary} />
         </div>
       </div>
@@ -95,51 +90,47 @@ function CoachPageContent() {
 
   if (!started) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <div className="max-w-md w-full space-y-6 text-center">
-          <div className="space-y-2">
-            <h1 className="text-2xl font-bold">Accent Coach</h1>
-            <p className="text-muted-foreground">{accentLabel}</p>
+      <div className="min-h-screen app-mesh-bg flex items-center justify-center p-4">
+        <div className="max-w-md w-full space-y-6">
+          <div className="glass-card p-6 text-center space-y-4">
+            <div className="space-y-2">
+              <span className="text-4xl">🇬🇧</span>
+              <h1 className="text-2xl font-bold">RP Conversation Coach</h1>
+              <Badge variant="secondary">Live Gemini voice</Badge>
+            </div>
+            <p className="text-sm text-muted-foreground text-left">
+              Free conversation in British RP. The coach models target features (BATH split, silent R, GOAT diphthong, prosody) and gives one specific tip per turn. End the session for an RP-focused fluency summary.
+            </p>
+            {summaryError && <p className="text-sm text-red-500">{summaryError}</p>}
+            <Button size="lg" className="w-full" onClick={async () => { setStarted(true); setSummaryError(null); await connect() }}>
+              Start RP conversation 🎤
+            </Button>
+            <ButtonLink href="/accent" variant="outline" className="w-full">← Back to training path</ButtonLink>
           </div>
-          <p className="text-sm text-muted-foreground">
-            Live voice conversation with pronunciation tips. When you finish, you&apos;ll get a fluency and pronunciation summary — pauses, fillers, pace, and priority improvements.
-          </p>
-          {summaryError && <p className="text-sm text-red-500">{summaryError}</p>}
-          <Button size="lg" className="w-full" onClick={async () => { setStarted(true); setSummaryError(null); await connect() }}>
-            Start Conversation 🎤
-          </Button>
-          <ButtonLink href="/accent" variant="ghost" className="w-full">← Back</ButtonLink>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <header className="border-b px-4 py-3 flex items-center justify-between">
+    <div className="min-h-screen app-mesh-bg flex flex-col">
+      <header className="border-b border-border/60 bg-background/80 backdrop-blur-md px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <h1 className="font-semibold">Accent Coach</h1>
-          <Badge variant="secondary">{accentLabel}</Badge>
+          <h1 className="font-semibold">RP Coach</h1>
+          <Badge variant="secondary">🇬🇧 British RP</Badge>
         </div>
         <div className="flex items-center gap-2">
-          <Badge
-            variant={status === 'connected' ? 'default' : status === 'connecting' ? 'secondary' : 'destructive'}
-          >
-            {status === 'connected' ? '🔴 Live' : status === 'connecting' ? 'Connecting...' : status}
+          <Badge variant={status === 'connected' ? 'default' : 'secondary'}>
+            {status === 'connected' ? '🔴 Live' : status === 'connecting' ? 'Connecting…' : status}
           </Badge>
-          <Button
-            variant="destructive"
-            size="sm"
-            disabled={summaryLoading}
-            onClick={handleEndSession}
-          >
-            {summaryLoading ? 'Summarising…' : 'End & Summary'}
+          <Button variant="destructive" size="sm" disabled={summaryLoading} onClick={handleEndSession}>
+            {summaryLoading ? 'Summarising…' : 'End & RP summary'}
           </Button>
         </div>
       </header>
 
       <div className="flex-1 flex flex-col max-w-2xl mx-auto w-full px-4 py-4 overflow-hidden">
-        <TranscriptView messages={transcript} personaLabel={accentLabel} userName="You" />
+        <TranscriptView messages={transcript} personaLabel="RP Coach" userName="You" />
         <Separator className="my-4" />
         <div className="space-y-3">
           <WaveformVisualizer isActive={isMicActive} />
@@ -149,11 +140,7 @@ function CoachPageContent() {
             </Button>
           )}
           <p className="text-center text-xs text-muted-foreground">
-            {status === 'connected'
-              ? isMicActive
-                ? 'Speak naturally — one tip per turn. Tap End & Summary when done.'
-                : 'Waiting for coach to finish...'
-              : 'Connecting...'}
+            One RP tip per turn — tap End when finished for your feature summary.
           </p>
         </div>
       </div>
@@ -163,7 +150,7 @@ function CoachPageContent() {
 
 export default function CoachPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading…</div>}>
       <CoachPageContent />
     </Suspense>
   )

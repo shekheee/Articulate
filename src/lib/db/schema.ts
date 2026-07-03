@@ -163,7 +163,7 @@ export const accentAttempts = pgTable('accent_attempts', {
   userId: text('user_id')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
-  phraseId: text('phrase_id').notNull(),          // e.g. "brit_bath_01"
+  phraseId: text('phrase_id').notNull(),          // e.g. "brit_bath_01" or "rp:non_rhotic:nr_1"
   accent: accentEnum('accent').notNull(),
   mode: accentModeEnum('mode').notNull(),
   accuracy: smallint('accuracy').notNull(),        // 0–100
@@ -176,7 +176,26 @@ export const accentAttempts = pgTable('accent_attempts', {
     wordsPerMinute?: number
     totalFillers?: number
     pauseCount?: number
+    featureId?: string
+    featureScore?: number
+    passedFeature?: boolean
   } | null>().default(null),
+  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+})
+
+export const accentFeatureMastery = pgTable('accent_feature_mastery', {
+  id: text('id').primaryKey(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  accentTarget: text('accent_target').notNull().default('rp'),
+  featureId: text('feature_id').notNull(),
+  masteryScore: smallint('mastery_score').notNull().default(0),
+  bestScore: smallint('best_score').notNull().default(0),
+  status: text('status').notNull().default('locked'),
+  attemptCount: integer('attempt_count').notNull().default(0),
+  lastPracticedAt: timestamp('last_practiced_at', { mode: 'date' }),
+  nextReviewAt: timestamp('next_review_at', { mode: 'date' }),
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
 })
 
@@ -187,3 +206,4 @@ export type InterviewSession = typeof interviewSessions.$inferSelect
 export type SessionMessage = typeof sessionMessages.$inferSelect
 export type SessionEvaluation = typeof sessionEvaluations.$inferSelect
 export type AccentAttempt = typeof accentAttempts.$inferSelect
+export type AccentFeatureMastery = typeof accentFeatureMastery.$inferSelect

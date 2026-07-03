@@ -8,7 +8,7 @@ import { LayoutDashboard, Mic, Target, Sparkles } from 'lucide-react'
 const NAV = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/interview/prep', label: 'Prep', icon: Target },
-  { href: '/accent', label: 'Accent', icon: Mic },
+  { href: '/accent', label: 'RP Trainer', icon: Mic },
 ]
 
 interface PageShellProps {
