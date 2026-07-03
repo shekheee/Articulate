@@ -6,7 +6,7 @@ export default auth((req: NextRequest & { auth: { user?: { id?: string } } | nul
   const isLoggedIn = !!req.auth
   const pathname = req.nextUrl.pathname
 
-  const publicRoutes = ['/login', '/signup', '/api/auth']
+  const publicRoutes = ['/login', '/signup', '/api/auth', '/api/signup']
   const isPublic = publicRoutes.some((r) => pathname.startsWith(r))
 
   if (!isLoggedIn && !isPublic) {
