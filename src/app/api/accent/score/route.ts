@@ -98,6 +98,8 @@ export async function POST(req: Request) {
     console.error('[accent/score]', err)
     const message =
       err instanceof Error ? err.message : 'Something went wrong while scoring your attempt.'
-    return NextResponse.json({ error: message }, { status: 500 })
+    const clientError =
+      /too short|empty|no speech|could not transcribe|check your microphone/i.test(message)
+    return NextResponse.json({ error: message }, { status: clientError ? 422 : 500 })
   }
 }
