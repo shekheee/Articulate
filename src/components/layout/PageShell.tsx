@@ -57,7 +57,7 @@ export async function PageShell({ children, className, maxWidth = 'md' }: PageSh
             ))}
           </nav>
           <div className="flex items-center gap-2">
-            <StreakBadge current={streak} className="hidden xs:flex text-xs py-1 px-2" />
+            <StreakBadge current={streak} className="hidden sm:flex text-xs py-1 px-2" />
             <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-primary/15 text-primary text-xs font-bold px-2">
               Lv.{level}
             </span>
