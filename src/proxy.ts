@@ -6,13 +6,13 @@ export default auth((req: NextRequest & { auth: { user?: { id?: string } } | nul
   const isLoggedIn = !!req.auth
   const pathname = req.nextUrl.pathname
 
-  const publicRoutes = ['/login', '/signup', '/api/auth', '/api/signup']
+  const publicRoutes = ['/login', '/api/auth']
   const isPublic = publicRoutes.some((r) => pathname.startsWith(r))
 
   if (!isLoggedIn && !isPublic) {
     return NextResponse.redirect(new URL('/login', req.url))
   }
-  if (isLoggedIn && (pathname === '/login' || pathname === '/signup')) {
+  if (isLoggedIn && pathname === '/login') {
     return NextResponse.redirect(new URL('/dashboard', req.url))
   }
 })

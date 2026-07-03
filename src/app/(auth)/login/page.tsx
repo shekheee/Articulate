@@ -1,10 +1,7 @@
-import Link from 'next/link'
 import { loginAction } from '@/lib/auth/login'
-import { signIn } from '@/lib/auth/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Separator } from '@/components/ui/separator'
 import { AuthShell } from '@/components/layout/AuthShell'
 
 export default async function LoginPage({
@@ -37,29 +34,6 @@ export default async function LoginPage({
           Sign in
         </Button>
       </form>
-
-      <div className="flex items-center gap-2 my-4">
-        <Separator className="flex-1" />
-        <span className="text-xs text-muted-foreground">or</span>
-        <Separator className="flex-1" />
-      </div>
-
-      <form
-        action={async () => {
-          'use server'
-          await signIn('google', { redirectTo: '/dashboard' })
-        }}
-      >
-        <Button type="submit" variant="outline" className="w-full" size="lg">
-          Continue with Google
-        </Button>
-      </form>
-      <p className="text-center text-xs text-muted-foreground pt-4">
-        New here?{' '}
-        <Link href="/signup" className="text-primary underline-offset-4 hover:underline font-medium">
-          Create a free account
-        </Link>
-      </p>
     </AuthShell>
   )
 }
