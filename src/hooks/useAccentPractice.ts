@@ -9,18 +9,22 @@ import {
   SILENCE_STOP_MS,
   SPEECH_RMS_THRESHOLD,
 } from '@/lib/accent/audio'
-import type { WordScore } from '@/lib/accent/scoring'
 import type { FluencyAnalysis } from '@/lib/accent/fluency'
 import type { AccentCoachingFeedback } from '@/lib/accent/feedback'
+import type { PhoneticsAnalysis } from '@/lib/accent/phonetics'
+import type { ProsodyAnalysis } from '@/lib/accent/prosody'
+import type { PhonemeWordAnalysis } from '@/lib/accent/phonetics'
 import type { Accent } from '@/lib/accent/phrases'
 
 export type RecordingState = 'idle' | 'recording' | 'processing' | 'done' | 'error'
 
 export interface ScoreResult {
   transcribed: string
-  wordScores: WordScore[]
+  wordScores: PhonemeWordAnalysis[]
   accuracy: number
   fluency: FluencyAnalysis
+  prosody?: ProsodyAnalysis
+  phonetics?: PhoneticsAnalysis
   coaching: AccentCoachingFeedback
   durationSeconds: number
 }

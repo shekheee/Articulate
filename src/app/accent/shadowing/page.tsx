@@ -167,7 +167,14 @@ function ShadowingPageContent() {
         </Card>
 
         {/* Result */}
-        {result && <AccentResultPanel result={result} tip={currentPhrase.tip} />}
+        {result && (
+          <AccentResultPanel
+            result={result}
+            tip={currentPhrase.tip}
+            expectedPhrase={currentPhrase.text}
+            accent={accent}
+          />
+        )}
 
         {/* Navigation */}
         <div className="flex gap-3">

@@ -151,7 +151,12 @@ function DrillsPageContent() {
         {/* Score result */}
         {result && (
           <>
-            <AccentResultPanel result={result} tip={current.tip} />
+            <AccentResultPanel
+              result={result}
+              tip={current.tip}
+              expectedPhrase={current.text}
+              accent={accent}
+            />
             <Button onClick={handleNext} className="w-full">Next card →</Button>
           </>
         )}

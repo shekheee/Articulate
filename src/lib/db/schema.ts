@@ -159,7 +159,15 @@ export const accentAttempts = pgTable('accent_attempts', {
   mode: accentModeEnum('mode').notNull(),
   accuracy: smallint('accuracy').notNull(),        // 0–100
   transcribed: text('transcribed').notNull(),      // what Whisper heard
-  wordScores: json('word_scores').$type<Array<{ word: string; matched: boolean; score: number }>>().notNull().default([]),
+  wordScores: json('word_scores').$type<Array<{ word: string; matched: boolean; score: number; ipa?: string; heardAs?: string; phonemeTip?: string; issues?: string[] }>>().notNull().default([]),
+  metrics: json('metrics').$type<{
+    fluencyScore?: number
+    pronunciationScore?: number
+    prosodyScore?: number
+    wordsPerMinute?: number
+    totalFillers?: number
+    pauseCount?: number
+  } | null>().default(null),
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
 })
 

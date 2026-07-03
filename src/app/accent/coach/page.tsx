@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect, useRef, Suspense } from 'react'
+import { useState, useCallback, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -9,39 +9,9 @@ import { ButtonLink } from '@/components/ui/button-link'
 import { TranscriptView } from '@/components/interview/TranscriptView'
 import { WaveformVisualizer } from '@/components/interview/WaveformVisualizer'
 import { useGeminiLive } from '@/hooks/useGeminiLive'
+import { buildCoachSystemPrompt } from '@/lib/accent/coach-prompts'
+import { CoachSummaryPanel, type CoachSummary } from '@/components/accent/CoachSummaryPanel'
 import type { Accent } from '@/lib/accent/phrases'
-
-const ACCENT_SYSTEM_PROMPTS: Record<Accent, string> = {
-  british: `You are a warm and encouraging British RP (Received Pronunciation) accent coach. Have a relaxed, friendly conversation with the user on any topic they choose.
-
-After each of the user's responses, do ONE of the following — pick the most relevant:
-1. If you hear a pronunciation that differs from RP (e.g. rhotic r, flat BATH vowel, American "schedule"), point it out gently and give the correct RP version in one sentence.
-2. If pronunciation was good, give brief positive reinforcement and continue the conversation naturally.
-
-Rules:
-- Give ONE tip per turn maximum — do not overwhelm.
-- Keep conversation flowing naturally — you are not drilling, you are chatting.
-- Suggest topics if the user is unsure: their weekend, a recent film, travel, food.
-- Describe mouth/tongue position only if it helps (e.g. "for the BATH vowel, open your jaw wider and let the sound come from the back of your mouth").
-- Speak in British RP yourself — your speech is the model.
-- Do not evaluate overall performance or give scores.
-- Format responses as plain conversational text.`,
-
-  irish: `You are a warm and encouraging Irish English accent coach. Have a relaxed, friendly conversation with the user on any topic they choose.
-
-After each of the user's responses, do ONE of the following — pick the most relevant:
-1. If you hear a pronunciation that differs from Irish English (e.g. non-rhotic r, the th→t/d shift missed, American vowels), point it out gently and show the Irish version in one sentence.
-2. If pronunciation was good, give brief positive reinforcement and continue the conversation naturally.
-
-Rules:
-- Give ONE tip per turn maximum — do not overwhelm.
-- Keep conversation flowing naturally — you are chatting, not drilling.
-- Suggest topics if the user is unsure: GAA, Irish weather, food, places they've visited.
-- Describe the sound clearly (e.g. "in Irish, the 'r' in 'car' is clearly pronounced — let it colour the vowel before it").
-- Speak with an Irish accent yourself — your speech is the model.
-- Do not evaluate overall performance or give scores.
-- Format responses as plain conversational text.`,
-}
 
 interface TranscriptMessage { id: string; role: 'ai' | 'user'; content: string }
 
@@ -50,14 +20,17 @@ function CoachPageContent() {
   const accent = (params.get('accent') ?? 'british') as Accent
   const [started, setStarted] = useState(false)
   const [transcript, setTranscript] = useState<TranscriptMessage[]>([])
+  const [summary, setSummary] = useState<CoachSummary | null>(null)
+  const [summaryLoading, setSummaryLoading] = useState(false)
+  const [summaryError, setSummaryError] = useState<string | null>(null)
 
   const addToTranscript = useCallback((role: 'ai' | 'user', content: string) => {
     setTranscript((prev) => [...prev, { id: `${Date.now()}-${Math.random()}`, role, content }])
   }, [])
 
-  const { status, isMicActive, isUserSpeaking, isAISpeaking, connect, disconnect, interrupt } = useGeminiLive({
-    systemPrompt: ACCENT_SYSTEM_PROMPTS[accent],
-    interviewType: 'behavioral', // needed for hook type — not used in prompt
+  const { status, isMicActive, isAISpeaking, connect, disconnect, interrupt, getSpeakingData, takePendingUserTranscript } = useGeminiLive({
+    systemPrompt: buildCoachSystemPrompt(accent),
+    interviewType: 'behavioral',
     persona: 'friendly',
     difficulty: 'mid',
     onAITranscript: (text) => addToTranscript('ai', text),
@@ -65,6 +38,50 @@ function CoachPageContent() {
   })
 
   const accentLabel = accent === 'british' ? '🇬🇧 British RP' : '🇮🇪 Irish English'
+
+  const handleEndSession = useCallback(async () => {
+    setSummaryLoading(true)
+    setSummaryError(null)
+
+    const pending = takePendingUserTranscript()
+    const finalTranscript = pending
+      ? [...transcript, { id: `pending-${Date.now()}`, role: 'user' as const, content: pending }]
+      : transcript
+
+    const speakingData = getSpeakingData()
+    disconnect()
+
+    try {
+      const res = await fetch('/api/accent/coach-summary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          accent,
+          transcript: finalTranscript.map((m) => ({ role: m.role, content: m.content })),
+          speakingData,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Summary failed')
+      setSummary(data)
+      setStarted(false)
+    } catch (err) {
+      setSummaryError(err instanceof Error ? err.message : 'Could not generate summary')
+      setStarted(false)
+    } finally {
+      setSummaryLoading(false)
+    }
+  }, [accent, disconnect, getSpeakingData, takePendingUserTranscript, transcript])
+
+  if (summary) {
+    return (
+      <div className="min-h-screen bg-background p-4">
+        <div className="max-w-2xl mx-auto">
+          <CoachSummaryPanel summary={summary} />
+        </div>
+      </div>
+    )
+  }
 
   if (!started) {
     return (
@@ -75,9 +92,10 @@ function CoachPageContent() {
             <p className="text-muted-foreground">{accentLabel}</p>
           </div>
           <p className="text-sm text-muted-foreground">
-            Have a natural conversation and receive real-time pronunciation tips. The AI will gently guide you towards a more authentic accent.
+            Live voice conversation with pronunciation tips. When you finish, you&apos;ll get a fluency and pronunciation summary — pauses, fillers, pace, and priority improvements.
           </p>
-          <Button size="lg" className="w-full" onClick={async () => { setStarted(true); await connect() }}>
+          {summaryError && <p className="text-sm text-red-500">{summaryError}</p>}
+          <Button size="lg" className="w-full" onClick={async () => { setStarted(true); setSummaryError(null); await connect() }}>
             Start Conversation 🎤
           </Button>
           <ButtonLink href="/accent" variant="ghost" className="w-full">← Back</ButtonLink>
@@ -99,8 +117,13 @@ function CoachPageContent() {
           >
             {status === 'connected' ? '🔴 Live' : status === 'connecting' ? 'Connecting...' : status}
           </Badge>
-          <Button variant="destructive" size="sm" onClick={() => { disconnect(); setStarted(false) }}>
-            End
+          <Button
+            variant="destructive"
+            size="sm"
+            disabled={summaryLoading}
+            onClick={handleEndSession}
+          >
+            {summaryLoading ? 'Summarising…' : 'End & Summary'}
           </Button>
         </div>
       </header>
@@ -118,7 +141,7 @@ function CoachPageContent() {
           <p className="text-center text-xs text-muted-foreground">
             {status === 'connected'
               ? isMicActive
-                ? 'Speak naturally — the coach will respond'
+                ? 'Speak naturally — one tip per turn. Tap End & Summary when done.'
                 : 'Waiting for coach to finish...'
               : 'Connecting...'}
           </p>

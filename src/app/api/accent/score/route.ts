@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server'
 import { scoreTranscription } from '@/lib/accent/scoring'
 import { transcribeAccentAudio } from '@/lib/accent/transcribe'
 import { buildFluencyAnalysis } from '@/lib/accent/fluency'
+import { analyzePhonetics } from '@/lib/accent/phonetics'
+import { analyzeProsody } from '@/lib/accent/prosody'
 import { generateAccentCoaching } from '@/lib/accent/feedback'
 import { saveAccentAttempt } from '@/lib/db/queries'
 import { randomUUID } from 'crypto'
@@ -65,15 +67,33 @@ export async function POST(req: Request) {
 
     const { wordScores, accuracy } = scoreTranscription(expected, transcription.text)
     const fluency = buildFluencyAnalysis(transcription.text, duration, transcription.segments)
+    const prosody = analyzeProsody(
+      transcription.segments,
+      duration,
+      expected.split(/\s+/).filter(Boolean).length
+    )
+    const phonetics = await analyzePhonetics({
+      expected,
+      transcribed: transcription.text,
+      accent,
+      wordScores,
+    })
 
     const coaching = await generateAccentCoaching({
       expected,
       transcribed: transcription.text,
       accent,
-      wordScores,
-      accuracy,
+      wordScores: phonetics.words,
+      accuracy: phonetics.overallPhonemeScore,
       fluency,
+      phonetics,
+      prosody,
     })
+
+    const fluencyScore = Math.max(
+      0,
+      Math.min(100, 100 - fluency.fillerRate * 2 - fluency.pauses.length * 4)
+    )
 
     await saveAccentAttempt({
       id: randomUUID(),
@@ -81,16 +101,26 @@ export async function POST(req: Request) {
       phraseId,
       accent,
       mode: mode ?? 'shadowing',
-      accuracy,
+      accuracy: phonetics.overallPhonemeScore,
       transcribed: transcription.text,
-      wordScores,
+      wordScores: phonetics.words,
+      metrics: {
+        fluencyScore,
+        pronunciationScore: phonetics.overallPhonemeScore,
+        prosodyScore: prosody.score,
+        wordsPerMinute: fluency.wordsPerMinute,
+        totalFillers: fluency.totalFillers,
+        pauseCount: fluency.pauses.length,
+      },
     })
 
     return NextResponse.json({
       transcribed: transcription.text,
-      wordScores,
-      accuracy,
+      wordScores: phonetics.words,
+      accuracy: phonetics.overallPhonemeScore,
       fluency,
+      prosody,
+      phonetics,
       coaching,
       durationSeconds: duration,
     })

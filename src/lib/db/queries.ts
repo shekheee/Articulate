@@ -137,7 +137,15 @@ export async function saveAccentAttempt(data: {
   mode: 'shadowing' | 'drill' | 'coach'
   accuracy: number
   transcribed: string
-  wordScores: Array<{ word: string; matched: boolean; score: number }>
+  wordScores: Array<{ word: string; matched: boolean; score: number; ipa?: string; heardAs?: string; phonemeTip?: string; issues?: string[] }>
+  metrics?: {
+    fluencyScore?: number
+    pronunciationScore?: number
+    prosodyScore?: number
+    wordsPerMinute?: number
+    totalFillers?: number
+    pauseCount?: number
+  } | null
 }): Promise<AccentAttempt> {
   const [attempt] = await db.insert(accentAttempts).values(data).returning()
   return attempt

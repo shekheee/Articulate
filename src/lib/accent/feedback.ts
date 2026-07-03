@@ -4,6 +4,8 @@ import { createAnthropic } from '@ai-sdk/anthropic'
 import { createOpenAI } from '@ai-sdk/openai'
 import type { FluencyAnalysis } from '@/lib/accent/fluency'
 import type { WordScore } from '@/lib/accent/scoring'
+import type { PhoneticsAnalysis } from '@/lib/accent/phonetics'
+import type { ProsodyAnalysis } from '@/lib/accent/prosody'
 import { formatFluencySummary } from '@/lib/accent/fluency'
 
 const accentFeedbackSchema = z.object({
@@ -55,20 +57,28 @@ export async function generateAccentCoaching(params: {
   wordScores: WordScore[]
   accuracy: number
   fluency: FluencyAnalysis
+  phonetics?: PhoneticsAnalysis
+  prosody?: ProsodyAnalysis
   tip?: string
 }): Promise<AccentCoachingFeedback> {
-  const { expected, transcribed, accent, wordScores, accuracy, fluency, tip } = params
+  const { expected, transcribed, accent, wordScores, accuracy, fluency, phonetics, prosody, tip } = params
   const accentLabel = accent === 'british' ? 'British RP (Received Pronunciation)' : 'Irish English'
   const weakWords = wordScores.filter((w) => w.score < 85).map((w) => `${w.word} (${w.score}%)`)
   const fluencyLines = formatFluencySummary(fluency)
+  const phonemeLines = phonetics?.words
+    .filter((w) => w.issues && w.issues.length > 0)
+    .slice(0, 5)
+    .map((w) => `${w.word}: IPA ${w.ipa}, heard ${w.heardAs} — ${w.issues.join('; ')}`) ?? []
 
-  const system = `You are an expert ${accentLabel} pronunciation and speaking coach. Give concise, actionable feedback based on transcription and metrics. Be encouraging but specific. Return JSON only.`
+  const system = `You are an expert ${accentLabel} pronunciation and speaking coach. Give concise, actionable feedback based on transcription, phonetics, and fluency metrics. Be encouraging but specific. Return JSON only.`
 
   const prompt = `Expected phrase: "${expected}"
 What we heard: "${transcribed}"
 Pronunciation accuracy: ${accuracy}%
 Weak words: ${weakWords.length ? weakWords.join(', ') : 'none — good match'}
 ${tip ? `Phrase tip: ${tip}` : ''}
+${phonemeLines.length ? `\nPhoneme analysis:\n${phonemeLines.join('\n')}` : ''}
+${prosody ? `\nProsody: pace ${prosody.paceVariance}, score ${prosody.score}/100. ${prosody.intonationNotes.join(' ')}` : ''}
 
 Fluency metrics:
 ${fluencyLines.join('\n')}

@@ -19,12 +19,25 @@ export default async function ProgressPage() {
     const bestScores: Record<string, number> = {}
     const attemptCounts: Record<string, number> = {}
     const recentScores: Record<string, number[]> = {}
+    let avgFluency = 0
+    let fluencyCount = 0
+    let avgProsody = 0
+    let prosodyCount = 0
 
     for (const a of filtered) {
       if ((bestScores[a.phraseId] ?? -1) < a.accuracy) bestScores[a.phraseId] = a.accuracy
       attemptCounts[a.phraseId] = (attemptCounts[a.phraseId] ?? 0) + 1
       if (!recentScores[a.phraseId]) recentScores[a.phraseId] = []
       recentScores[a.phraseId].push(a.accuracy)
+      const m = a.metrics as { fluencyScore?: number; prosodyScore?: number } | null
+      if (m?.fluencyScore != null) {
+        avgFluency += m.fluencyScore
+        fluencyCount++
+      }
+      if (m?.prosodyScore != null) {
+        avgProsody += m.prosodyScore
+        prosodyCount++
+      }
     }
 
     const level = computeAccentLevel(bestScores, accent)
@@ -35,7 +48,13 @@ export default async function ProgressPage() {
       trend: recentScores[p.id]?.slice(-3) ?? [],
     }))
 
-    return { level, phraseData, totalAttempts: filtered.length }
+    return {
+      level,
+      phraseData,
+      totalAttempts: filtered.length,
+      avgFluency: fluencyCount ? Math.round(avgFluency / fluencyCount) : null,
+      avgProsody: prosodyCount ? Math.round(avgProsody / prosodyCount) : null,
+    }
   }
 
   const britishStats = buildAccentStats('british')
@@ -73,10 +92,16 @@ export default async function ProgressPage() {
     return (
       <Card>
         <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <CardTitle className="text-base">{label}</CardTitle>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Badge variant="secondary">{stats.totalAttempts} attempts</Badge>
+              {stats.avgFluency != null && (
+                <Badge variant="outline">Avg fluency {stats.avgFluency}%</Badge>
+              )}
+              {stats.avgProsody != null && (
+                <Badge variant="outline">Avg prosody {stats.avgProsody}%</Badge>
+              )}
               <Badge variant={stats.level === 3 ? 'default' : 'outline'} className={levelColors[stats.level]}>
                 {levelLabels[stats.level]}
               </Badge>
