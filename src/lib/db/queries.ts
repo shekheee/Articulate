@@ -2,6 +2,7 @@ import { db } from './index'
 import { interviewSessions, sessionMessages, sessionEvaluations, users, accentAttempts } from './schema'
 import { eq, desc, and, avg, max } from 'drizzle-orm'
 import type { InterviewSession, SessionMessage, SessionEvaluation, AccentAttempt } from './schema'
+import type { SpeakingMetrics } from '@/lib/ai/evaluate'
 
 export async function createSession(data: {
   id: string
@@ -85,7 +86,7 @@ export async function saveEvaluation(data: {
     feedback: string
     improvements: string[]
   }>
-  speakingMetrics: Record<string, unknown> | null
+  speakingMetrics: SpeakingMetrics | null
 }): Promise<SessionEvaluation> {
   const [evaluation] = await db.insert(sessionEvaluations).values(data).returning()
   return evaluation

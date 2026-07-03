@@ -126,7 +126,7 @@ export const sessionEvaluations = pgTable('session_evaluations', {
       estimatedPauses: number
       wordsPerMinute: number
       observations: string[]
-    }>()
+    } | null>()
     .default(null),
   perQuestion: json('per_question')
     .$type<
