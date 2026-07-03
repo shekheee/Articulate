@@ -10,26 +10,7 @@ import { ButtonLink } from '@/components/ui/button-link'
 import { AudioPlaybackQueue } from '@/lib/voice/playback'
 import { getPhrases, type AccentPhrase, type Accent } from '@/lib/accent/phrases'
 import { useAccentPractice } from '@/hooks/useAccentPractice'
-import type { ScoreResult } from '@/hooks/useAccentPractice'
-
-function WordHighlight({ wordScores }: { wordScores: ScoreResult['wordScores'] }) {
-  return (
-    <div className="flex flex-wrap gap-1.5 justify-center">
-      {wordScores.map((w, i) => {
-        const bg =
-          w.score >= 85 ? 'bg-green-100 text-green-800 border-green-200' :
-          w.score >= 60 ? 'bg-yellow-100 text-yellow-800 border-yellow-200' :
-          'bg-red-100 text-red-800 border-red-200'
-        return (
-          <span key={i} className={`rounded-md border px-2 py-0.5 text-sm font-medium ${bg}`}>
-            {w.word}
-            <span className="text-xs opacity-70 ml-1">{w.score}%</span>
-          </span>
-        )
-      })}
-    </div>
-  )
-}
+import { AccentResultPanel, RecordingIndicator } from '@/components/accent/AccentResultPanel'
 
 function ShadowingPageContent() {
   const params = useSearchParams()
@@ -43,7 +24,7 @@ function ShadowingPageContent() {
   const audioCtxRef = useRef<AudioContext | null>(null)
   const queueRef = useRef<AudioPlaybackQueue | null>(null)
 
-  const { recordingState, result, error, startRecording, stopRecording, reset } = useAccentPractice(accent)
+  const { recordingState, result, error, recordingSeconds, audioLevel, startRecording, stopRecording, reset } = useAccentPractice(accent)
 
   const currentPhrase: AccentPhrase | undefined = phrases[phraseIdx]
 
@@ -169,9 +150,12 @@ function ShadowingPageContent() {
                     🎤 {recordingState === 'done' ? 'Try again' : 'Repeat now'}
                   </Button>
                 ) : recordingState === 'recording' ? (
-                  <Button onClick={handleStopEarly} className="w-full" variant="secondary">
-                    ⏹ Stop early
-                  </Button>
+                  <>
+                    <RecordingIndicator recordingSeconds={recordingSeconds} audioLevel={audioLevel} />
+                    <Button onClick={handleStopEarly} className="w-full" variant="secondary">
+                      ⏹ Done speaking
+                    </Button>
+                  </>
                 ) : (
                   <Button disabled className="w-full">Analysing...</Button>
                 )}
@@ -183,29 +167,7 @@ function ShadowingPageContent() {
         </Card>
 
         {/* Result */}
-        {result && (
-          <Card>
-            <CardContent className="py-5 space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="font-medium text-sm">Your attempt</span>
-                <span className={`text-xl font-bold ${result.accuracy >= 75 ? 'text-green-600' : result.accuracy >= 50 ? 'text-yellow-600' : 'text-red-500'}`}>
-                  {result.accuracy}%
-                </span>
-              </div>
-
-              <WordHighlight wordScores={result.wordScores} />
-
-              <div className="text-xs text-muted-foreground text-center">
-                Whisper heard: &ldquo;{result.transcribed}&rdquo;
-              </div>
-
-              {/* Tip */}
-              <div className="rounded-md bg-muted/60 px-3 py-2 text-sm text-muted-foreground">
-                <span className="font-medium text-foreground">Tip: </span>{currentPhrase.tip}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        {result && <AccentResultPanel result={result} tip={currentPhrase.tip} />}
 
         {/* Navigation */}
         <div className="flex gap-3">

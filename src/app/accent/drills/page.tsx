@@ -10,6 +10,7 @@ import { ButtonLink } from '@/components/ui/button-link'
 import { AudioPlaybackQueue } from '@/lib/voice/playback'
 import { getPhrases, type AccentPhrase, type Accent } from '@/lib/accent/phrases'
 import { useAccentPractice } from '@/hooks/useAccentPractice'
+import { AccentResultPanel, RecordingIndicator } from '@/components/accent/AccentResultPanel'
 
 function DrillsPageContent() {
   const params = useSearchParams()
@@ -24,7 +25,7 @@ function DrillsPageContent() {
   const audioCtxRef = useRef<AudioContext | null>(null)
   const queueRef = useRef<AudioPlaybackQueue | null>(null)
 
-  const { recordingState, result, error, startRecording, stopRecording, reset } = useAccentPractice(accent)
+  const { recordingState, result, error, recordingSeconds, audioLevel, startRecording, stopRecording, reset } = useAccentPractice(accent)
 
   const current: AccentPhrase | undefined = allPhrases[idx]
 
@@ -135,7 +136,10 @@ function DrillsPageContent() {
               </Button>
             )}
             {recordingState === 'recording' && (
-              <Button onClick={handleStop} variant="secondary" className="w-full">⏹ Done</Button>
+              <>
+                <RecordingIndicator recordingSeconds={recordingSeconds} audioLevel={audioLevel} />
+                <Button onClick={handleStop} variant="secondary" className="w-full">⏹ Done speaking</Button>
+              </>
             )}
             {recordingState === 'processing' && (
               <Button disabled className="w-full">Scoring...</Button>
@@ -146,29 +150,10 @@ function DrillsPageContent() {
 
         {/* Score result */}
         {result && (
-          <Card>
-            <CardContent className="py-4 space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">Accuracy</span>
-                <span className={`text-2xl font-bold ${result.accuracy >= 75 ? 'text-green-600' : result.accuracy >= 50 ? 'text-yellow-600' : 'text-red-500'}`}>
-                  {result.accuracy}%
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {result.wordScores.map((w, i) => {
-                  const bg = w.score >= 85 ? 'bg-green-100 text-green-800 border-green-200' :
-                    w.score >= 60 ? 'bg-yellow-100 text-yellow-800 border-yellow-200' :
-                    'bg-red-100 text-red-800 border-red-200'
-                  return <span key={i} className={`rounded border px-1.5 py-0.5 text-xs font-medium ${bg}`}>{w.word} {w.score}%</span>
-                })}
-              </div>
-              <p className="text-xs text-muted-foreground">Heard: &ldquo;{result.transcribed}&rdquo;</p>
-              <div className="rounded bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
-                <strong className="text-foreground">Tip: </strong>{current.tip}
-              </div>
-              <Button onClick={handleNext} className="w-full">Next card →</Button>
-            </CardContent>
-          </Card>
+          <>
+            <AccentResultPanel result={result} tip={current.tip} />
+            <Button onClick={handleNext} className="w-full">Next card →</Button>
+          </>
         )}
 
         {revealed && !result && recordingState === 'idle' && (
